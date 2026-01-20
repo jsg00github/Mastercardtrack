@@ -239,8 +239,8 @@ async function register() {
         return;
     }
 
-    if (password.length < 6) {
-        showAuthError('La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 6 || password.length > 70) {
+        showAuthError('La contraseña debe tener entre 6 y 70 caracteres');
         return;
     }
 

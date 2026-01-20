@@ -1,7 +1,7 @@
 """
 Pydantic schemas for API request/response validation
 """
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 from datetime import datetime, date
 
@@ -11,7 +11,7 @@ from datetime import datetime, date
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
-    password: str
+    password: str = Field(..., max_length=70, description="Password max length 70 to fit bcrypt limit")
 
 
 class UserLogin(BaseModel):

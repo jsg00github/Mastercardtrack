@@ -553,16 +553,15 @@ async def upload_statement(
             statement_id=statement.id
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[Upload] Error processing PDF: {e}")
+        print(f"[Upload Error] {str(e)}")
         import traceback
         traceback.print_exc()
-        
-        # Fallback to minimal response
-        return schemas.UploadResponse(
-            filename=file.filename,
-            transactions_imported=0,
-            total_amount=0
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error procesando PDF: {str(e)}"
         )
 
 

@@ -30,6 +30,9 @@ class StatementData:
     impuestos_dolares: float
     total_transactions_pesos: float
     total_transactions_dolares: float
+    # Saldo Pendiente (previous month balance)
+    saldo_pendiente_pesos: float = 0.0
+    saldo_pendiente_dolares: float = 0.0
     # New fields for Statement model
     month: int = 0
     year: int = 0
@@ -103,6 +106,23 @@ def extract_saldo_actual(text: str) -> Tuple[float, float]:
     
     # Pattern: SALDO ACTUAL $ 3051644,80 U$S 488,62
     match = re.search(r'SALDO ACTUAL\s*\$?\s*([\d.,]+)\s*U\$S\s*([\d.,]+)', text, re.IGNORECASE)
+    if match:
+        saldo_pesos = parse_amount(match.group(1))
+        saldo_dolares = parse_amount(match.group(2))
+    
+    return saldo_pesos, saldo_dolares
+
+
+def extract_saldo_pendiente(text: str) -> Tuple[float, float]:
+    """
+    Extract SALDO PENDIENTE values (previous month's balance)
+    Example line: "SALDO PENDIENTE     160594,67      0,00"
+    """
+    saldo_pesos = 0.0
+    saldo_dolares = 0.0
+    
+    # Pattern: SALDO PENDIENTE followed by two numbers (pesos and dollars)
+    match = re.search(r'SALDO PENDIENTE\s+([\d.,]+)\s+([\d.,]+)', text, re.IGNORECASE)
     if match:
         saldo_pesos = parse_amount(match.group(1))
         saldo_dolares = parse_amount(match.group(2))
@@ -232,6 +252,8 @@ def parse_mastercard_pdf(file_path: str) -> StatementData:
     transactions: List[Transaction] = []
     saldo_pesos = 0.0
     saldo_dolares = 0.0
+    saldo_pendiente_pesos = 0.0
+    saldo_pendiente_dolares = 0.0
     statement_date = None
     month = 0
     year = 0
@@ -252,7 +274,9 @@ def parse_mastercard_pdf(file_path: str) -> StatementData:
             # Extract header info from first page
             if page_num == 0:
                 saldo_pesos, saldo_dolares = extract_saldo_actual(page_text)
+                saldo_pendiente_pesos, saldo_pendiente_dolares = extract_saldo_pendiente(page_text)
                 print(f"[PDF Parser] SALDO ACTUAL: ${saldo_pesos:,.2f} pesos, ${saldo_dolares:,.2f} USD")
+                print(f"[PDF Parser] SALDO PENDIENTE: ${saldo_pendiente_pesos:,.2f} pesos, ${saldo_pendiente_dolares:,.2f} USD")
                 
                 # Extract dates
                 statement_date, month, year = extract_statement_date(page_text)
@@ -286,13 +310,15 @@ def parse_mastercard_pdf(file_path: str) -> StatementData:
     total_pesos = sum(t.amount_pesos for t in transactions)
     total_dolares = sum(t.amount_dollars for t in transactions)
     
-    # Calculate taxes (difference between SALDO ACTUAL and sum of transactions)
-    impuestos_pesos = saldo_pesos - total_pesos
-    impuestos_dolares = saldo_dolares - total_dolares
+    # Calculate taxes (difference between SALDO ACTUAL and sum of transactions, minus saldo pendiente)
+    # Impuestos = Saldo Actual - Total Consumos - Saldo Pendiente
+    impuestos_pesos = saldo_pesos - total_pesos - saldo_pendiente_pesos
+    impuestos_dolares = saldo_dolares - total_dolares - saldo_pendiente_dolares
     
     print(f"[PDF Parser] Total transactions: {len(transactions)}")
     print(f"[PDF Parser] Sum of transactions: ${total_pesos:,.2f} pesos, ${total_dolares:,.2f} USD")
     print(f"[PDF Parser] SALDO ACTUAL: ${saldo_pesos:,.2f} pesos, ${saldo_dolares:,.2f} USD")
+    print(f"[PDF Parser] SALDO PENDIENTE: ${saldo_pendiente_pesos:,.2f} pesos, ${saldo_pendiente_dolares:,.2f} USD")
     print(f"[PDF Parser] Impuestos calculated: ${impuestos_pesos:,.2f} pesos, ${impuestos_dolares:,.2f} USD")
     
     return StatementData(
@@ -303,6 +329,8 @@ def parse_mastercard_pdf(file_path: str) -> StatementData:
         impuestos_dolares=impuestos_dolares,
         total_transactions_pesos=total_pesos,
         total_transactions_dolares=total_dolares,
+        saldo_pendiente_pesos=saldo_pendiente_pesos,
+        saldo_pendiente_dolares=saldo_pendiente_dolares,
         month=month,
         year=year,
         statement_date=statement_date,

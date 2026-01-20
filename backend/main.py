@@ -531,6 +531,48 @@ async def upload_statement(
             transactions_created.append(impuestos_transaction)
             total_pesos += abs(statement_data.impuestos_pesos)
         
+        # Add saldo pendiente (previous month balance) as a separate transaction if significant
+        if abs(statement_data.saldo_pendiente_pesos) > 100:
+            saldo_pendiente_category = next(
+                (c for c in categories if "otro" in c.name.lower()),
+                None
+            )
+            
+            saldo_pendiente_transaction = models.Transaction(
+                user_id=current_user.id,
+                statement_id=statement.id,
+                category_id=saldo_pendiente_category.id if saldo_pendiente_category else None,
+                merchant="Saldo Pendiente (Mes Anterior)",
+                amount=abs(statement_data.saldo_pendiente_pesos),
+                is_dollar=False,
+                date=statement_data.statement_date or datetime.utcnow(),
+                description="Saldo impago del mes anterior que se arrastra a este resumen"
+            )
+            db.add(saldo_pendiente_transaction)
+            transactions_created.append(saldo_pendiente_transaction)
+            total_pesos += abs(statement_data.saldo_pendiente_pesos)
+        
+        # Same for USD saldo pendiente
+        if abs(statement_data.saldo_pendiente_dolares) > 1:
+            saldo_pendiente_usd_category = next(
+                (c for c in categories if "otro" in c.name.lower()),
+                None
+            )
+            
+            saldo_pendiente_usd_transaction = models.Transaction(
+                user_id=current_user.id,
+                statement_id=statement.id,
+                category_id=saldo_pendiente_usd_category.id if saldo_pendiente_usd_category else None,
+                merchant="Saldo Pendiente USD (Mes Anterior)",
+                amount=abs(statement_data.saldo_pendiente_dolares),
+                is_dollar=True,
+                date=statement_data.statement_date or datetime.utcnow(),
+                description="Saldo en dólares impago del mes anterior"
+            )
+            db.add(saldo_pendiente_usd_transaction)
+            transactions_created.append(saldo_pendiente_usd_transaction)
+            total_dollars += abs(statement_data.saldo_pendiente_dolares)
+        
         # Update statement transaction count
         statement.transaction_count = len(transactions_created)
         

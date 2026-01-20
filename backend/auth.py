@@ -115,44 +115,57 @@ async def get_current_user(
 
 def register_user(db: Session, user_data: schemas.UserCreate) -> models.User:
     """Register a new user"""
-    # Check if email already exists
-    if db.query(models.User).filter(models.User.email == user_data.email).first():
+    try:
+        # Check if email already exists
+        if db.query(models.User).filter(models.User.email == user_data.email).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El email ya está registrado"
+            )
+        
+        # Check if username already exists
+        if db.query(models.User).filter(models.User.username == user_data.username).first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre de usuario ya existe"
+            )
+        
+        # Create user
+        hashed_password = get_password_hash(user_data.password)
+        db_user = models.User(
+            email=user_data.email,
+            username=user_data.username,
+            hashed_password=hashed_password
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        # Create default categories for the user
+        for cat_data in models.DEFAULT_CATEGORIES:
+            category = models.Category(
+                user_id=db_user.id,
+                name=cat_data["name"],
+                icon=cat_data["icon"],
+                color=cat_data["color"],
+                is_default=True
+            )
+            db.add(category)
+        db.commit()
+        
+        return db_user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[REGISTER ERROR] {str(e)}")
+        import traceback
+        traceback.print_exc()
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El email ya está registrado"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno durante registro: {str(e)}"
         )
-    
-    # Check if username already exists
-    if db.query(models.User).filter(models.User.username == user_data.username).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de usuario ya existe"
-        )
-    
-    # Create user
-    hashed_password = get_password_hash(user_data.password)
-    db_user = models.User(
-        email=user_data.email,
-        username=user_data.username,
-        hashed_password=hashed_password
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    # Create default categories for the user
-    for cat_data in models.DEFAULT_CATEGORIES:
-        category = models.Category(
-            user_id=db_user.id,
-            name=cat_data["name"],
-            icon=cat_data["icon"],
-            color=cat_data["color"],
-            is_default=True
-        )
-        db.add(category)
-    db.commit()
-    
-    return db_user
 
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[models.User]:

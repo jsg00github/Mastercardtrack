@@ -311,7 +311,7 @@ async def delete_transaction(
 async def get_analytics_data(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
-    period: str = Query("month", regex="^(month|quarter|year)$"),
+    period: str = Query("month", pattern="^(month|quarter|year)$"),
     is_dollar: Optional[bool] = Query(None, description="True for USD, False for ARS, None for all"),
     month: Optional[int] = Query(None, ge=1, le=12, description="Filter by month (1-12)"),
     year: Optional[int] = Query(None, ge=2020, le=2030, description="Filter by year")
@@ -324,7 +324,7 @@ async def get_analytics_data(
 async def get_spending_trend(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(get_db),
-    period: str = Query("month", regex="^(month|quarter|year)$"),
+    period: str = Query("month", pattern="^(month|quarter|year)$"),
     is_dollar: Optional[bool] = Query(None, description="True for USD, False for ARS, None for all"),
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2020, le=2030)

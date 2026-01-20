@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="CardTrack - Tu tracker de gastos inteligente con categorización automática y dashboard de analytics">
+    <title>CardTrack - Control de Gastos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal auth-modal">
+            <div class="modal-header">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                    </div>
+                    <span class="logo-text">CardTrack</span>
+                </div>
+            </div>
+
+            <!-- Login Form -->
+            <form class="auth-form" id="loginForm" onsubmit="return false;">
+                <h2>Iniciá Sesión</h2>
+                <p class="auth-subtitle">Ingresá tus datos para continuar</p>
+
+                <div class="form-group">
+                    <label for="loginUsername">Usuario</label>
+                    <input type="text" id="loginUsername" placeholder="Tu usuario" autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Contraseña</label>
+                    <input type="password" id="loginPassword" placeholder="Tu contraseña"
+                        autocomplete="current-password">
+                </div>
+
+                <button class="btn-primary btn-full" id="loginBtn">
+                    Ingresar
+                </button>
+
+                <p class="auth-switch">
+                    ¿No tenés cuenta? <a href="#" id="showRegister">Registrate</a>
+                </p>
+            </form>
+
+            <!-- Register Form -->
+            <form class="auth-form hidden" id="registerForm" onsubmit="return false;">
+                <h2>Crear Cuenta</h2>
+                <p class="auth-subtitle">Registrate gratis para empezar</p>
+
+                <div class="form-group">
+                    <label for="registerEmail">Email</label>
+                    <input type="email" id="registerEmail" placeholder="tu@email.com" autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="registerUsername">Usuario</label>
+                    <input type="text" id="registerUsername" placeholder="Elegí un usuario" autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="registerPassword">Contraseña</label>
+                    <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres"
+                        autocomplete="new-password">
+                </div>
+
+                <button class="btn-primary btn-full" id="registerBtn">
+                    Crear Cuenta
+                </button>
+
+                <p class="auth-switch">
+                    ¿Ya tenés cuenta? <a href="#" id="showLogin">Iniciá sesión</a>
+                </p>
+            </form>
+
+            <div class="auth-error hidden" id="authError"></div>
+        </div>
+    </div>
+
+    <!-- Category Editor Modal -->
+    <div class="modal-overlay hidden" id="categoryModal">
+        <div class="modal category-modal">
+            <div class="modal-header">
+                <h2 id="categoryModalTitle">Nueva Categoría</h2>
+                <button class="modal-close" id="closeCategoryModal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label for="categoryName">Nombre</label>
+                <input type="text" id="categoryName" placeholder="Ej: Comida">
+            </div>
+
+            <div class="form-group">
+                <label for="categoryIcon">Ícono (emoji)</label>
+                <input type="text" id="categoryIcon" placeholder="🍔" maxlength="2">
+                <div class="emoji-picker" id="emojiPicker">
+                    <button type="button" class="emoji-btn" data-emoji="🍔">🍔</button>
+                    <button type="button" class="emoji-btn" data-emoji="🛒">🛒</button>
+                    <button type="button" class="emoji-btn" data-emoji="🚗">🚗</button>
+                    <button type="button" class="emoji-btn" data-emoji="🎮">🎮</button>
+                    <button type="button" class="emoji-btn" data-emoji="💡">💡</button>
+                    <button type="button" class="emoji-btn" data-emoji="💊">💊</button>
+                    <button type="button" class="emoji-btn" data-emoji="📱">📱</button>
+                    <button type="button" class="emoji-btn" data-emoji="🐕">🐕</button>
+                    <button type="button" class="emoji-btn" data-emoji="🐈">🐈</button>
+                    <button type="button" class="emoji-btn" data-emoji="✈️">✈️</button>
+                    <button type="button" class="emoji-btn" data-emoji="🏠">🏠</button>
+                    <button type="button" class="emoji-btn" data-emoji="👕">👕</button>
+                    <button type="button" class="emoji-btn" data-emoji="💰">💰</button>
+                    <button type="button" class="emoji-btn" data-emoji="📚">📚</button>
+                    <button type="button" class="emoji-btn" data-emoji="🎁">🎁</button>
+                    <button type="button" class="emoji-btn" data-emoji="☕">☕</button>
+                    <button type="button" class="emoji-btn" data-emoji="🍺">🍺</button>
+                    <button type="button" class="emoji-btn" data-emoji="⚽">⚽</button>
+                    <button type="button" class="emoji-btn" data-emoji="💻">💻</button>
+                    <button type="button" class="emoji-btn" data-emoji="📦">📦</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="categoryColor">Color</label>
+                <div class="color-picker">
+                    <input type="color" id="categoryColor" value="#00f0ff">
+                    <span id="colorPreview" style="background: #00f0ff;"></span>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn-secondary" id="cancelCategory">Cancelar</button>
+                <button class="btn-primary" id="saveCategory">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container (hidden until login) -->
+    <div class="app-container hidden" id="appContainer">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                </div>
+                <span class="logo-text">CardTrack</span>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="upload">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    Subir
+                </button>
+                <button class="nav-tab" data-tab="dashboard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard
+                </button>
+                <button class="nav-tab" data-tab="transactions">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    Movimientos
+                </button>
+                <button class="nav-tab" data-tab="analytics">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                        </path>
+                        <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                        <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                        <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    Analytics
+                </button>
+                <button class="nav-tab" data-tab="categories">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
+                        </path>
+                    </svg>
+                    Categorías
+                </button>
+            </nav>
+            <div class="header-actions">
+                <span class="user-name" id="userName"></span>
+                <button class="btn-icon" id="logoutBtn" title="Cerrar sesión">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Date Alert Banner (hidden until statement uploaded) -->
+        <div class="date-banner hidden" id="dateBanner">
+            <div class="date-banner-content">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="banner-icon">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                </svg>
+                <span class="banner-text">
+                    <strong>Próximo Cierre:</strong> <span id="proximoCierre">-</span>
+                    &nbsp;|&nbsp;
+                    <strong>Vencimiento:</strong> <span id="proximoVencimiento">-</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="tab-content active" id="upload-section">
+                <div class="section-header">
+                    <h1>Subí tu Resumen</h1>
+                    <p>Arrastrá tu resumen de tarjeta de crédito o extracto bancario</p>
+                </div>
+
+                <!-- Dolar Rate Input -->
+                <div class="dolar-rate-input">
+                    <label for="dolarRateInput">💲 Cotización Dólar Tarjeta (oficial + 30%)</label>
+                    <div class="rate-input-wrapper">
+                        <span class="currency-prefix">$</span>
+                        <input type="number" id="dolarRateInput" placeholder="1500" step="0.01" min="0">
+                        <span class="currency-suffix">ARS</span>
+                    </div>
+                    <small>Este valor se usa para calcular el total unificado de gastos</small>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <polyline points="9 15 12 12 15 15"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Arrastrá y soltá tu archivo acá</h3>
+                    <p>o hacé click para buscar</p>
+                    <span class="supported-formats">Soporta PDF, CSV e imágenes</span>
+                    <input type="file" id="fileInput" accept=".pdf,.csv,.png,.jpg,.jpeg" hidden>
+                </div>
+
+                <!-- Upload Progress -->
+                <div class="upload-progress hidden" id="uploadProgress">
+                    <div class="progress-header">
+                        <div class="file-info">
+                            <div class="file-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                </svg>
+                            </div>
+                            <div class="file-details">
+                                <span class="file-name" id="fileName">resumen.pdf</span>
+                                <span class="file-size" id="fileSize">2.4 MB</span>
+                            </div>
+                        </div>
+                        <span class="progress-percent" id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-status" id="progressStatus">Subiendo...</div>
+                </div>
+
+                <!-- Processing Animation -->
+                <div class="processing-card hidden" id="processingCard">
+                    <div class="processing-animation">
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-ring delay-1"></div>
+                        <div class="pulse-ring delay-2"></div>
+                        <div class="processing-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3>Analizando tu Resumen</h3>
+                    <p id="processingStep">Extrayendo transacciones...</p>
+                    <div class="processing-steps">
+                        <div class="step active" id="step1">
+                            <div class="step-dot"></div>
+                            <span>Leyendo</span>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-dot"></div>
+                            <span>Extrayendo</span>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-dot"></div>
+                            <span>Categorizando</span>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-dot"></div>
+                            <span>Listo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Result -->
+                <div class="upload-result hidden" id="uploadResult">
+                    <div class="result-icon success">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <h3>¡Listo!</h3>
+                    <p id="resultMessage">Se importaron 15 transacciones</p>
+                    <button class="btn-primary" id="goToDashboard">
+                        Ver Dashboard
+                    </button>
+                </div>
+
+                <!-- Statements List -->
+                <div class="statements-list" id="statementsList">
+                    <div class="section-header">
+                        <h2>Resúmenes Subidos</h2>
+                    </div>
+                    <div class="statements-container" id="statementsContainer">
+                        <!-- Statement cards will be inserted here -->
+                        <p class="no-statements" id="noStatements">No hay resúmenes subidos aún. ¡Subí tu primer PDF!
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section class="tab-content" id="dashboard-section">
+                <div class="section-header">
+                    <div class="section-title-row">
+                        <div>
+                            <h1>Dashboard de Gastos</h1>
+                            <p>Tus insights de gastos de un vistazo</p>
+                        </div>
+                        <button class="btn-secondary" id="downloadPdf">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Descargar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard content for PDF export -->
+                <div id="dashboardContent">
+                    <!-- Filter Controls -->
+                    <div class="filter-controls">
+                        <!-- Currency Toggle -->
+                        <div class="currency-toggle" id="currencyToggle">
+                            <button class="toggle-btn active" data-currency="">📊 Todos</button>
+                            <button class="toggle-btn" data-currency="ars">💵 ARS</button>
+                            <button class="toggle-btn" data-currency="usd">💲 USD</button>
+                        </div>
+
+                        <!-- Period Selectors -->
+                        <div class="period-selectors">
+                            <select id="monthFilter" class="period-select">
+                                <option value="">Todos los meses</option>
+                            </select>
+                            <select id="yearFilter" class="period-select">
+                                <option value="">Todos los años</option>
+                            </select>
+                            <button class="date-btn" data-range="quarter" id="quarterBtn">Trimestre</button>
+                        </div>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="card-icon spending">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <span class="card-label">Gasto Total</span>
+                                <span class="card-value" id="totalSpending">$0</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <div class="card-icon transactions">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <span class="card-label">Transacciones</span>
+                                <span class="card-value" id="totalTransactions">0</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <div class="card-icon average">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path
+                                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <span class="card-label">Promedio por Compra</span>
+                                <span class="card-value" id="avgTransaction">$0</span>
+                            </div>
+                        </div>
+
+                        <div class="summary-card">
+                            <div class="card-icon top-category">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon
+                                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                    </polygon>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <span class="card-label">Categoría Top</span>
+                                <span class="card-value" id="topCategory">-</span>
+                                <span class="card-subvalue" id="topCategoryAmount">$0 gastados</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <!-- Bar Chart -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Gastos por Categoría</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="barChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Donut Chart -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <h3>Distribución</h3>
+                            </div>
+                            <div class="chart-container donut-container">
+                                <canvas id="donutChart"></canvas>
+                                <div class="donut-center">
+                                    <span class="donut-total" id="donutTotal">$0</span>
+                                    <span class="donut-label">Total</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trend Chart -->
+                        <div class="chart-card wide">
+                            <div class="chart-header">
+                                <h3>Tendencia de Gastos</h3>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="trendChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Breakdown -->
+                    <div class="category-breakdown">
+                        <h3>Desglose Detallado</h3>
+                        <div class="breakdown-list" id="breakdownList">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions Section -->
+            <section class="tab-content" id="transactions-section">
+                <div class="section-header">
+                    <h1>Todos los Movimientos</h1>
+                    <p>Revisá y gestioná tus gastos</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters-bar">
+                    <!-- Currency Toggle for Transactions -->
+                    <div class="currency-toggle" id="txCurrencyToggle">
+                        <button class="toggle-btn active" data-currency="">📊 Todos</button>
+                        <button class="toggle-btn" data-currency="ars">💵 ARS</button>
+                        <button class="toggle-btn" data-currency="usd">💲 USD</button>
+                    </div>
+
+                    <!-- Period Selectors for Transactions -->
+                    <div class="period-selectors">
+                        <select id="txMonthFilter" class="period-select">
+                            <option value="">Todos los meses</option>
+                        </select>
+                        <select id="txYearFilter" class="period-select">
+                            <option value="">Todos los años</option>
+                        </select>
+                    </div>
+
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" placeholder="Buscar transacciones..." id="searchInput">
+                    </div>
+                    <div class="filter-group">
+                        <select id="categoryFilter" class="filter-select">
+                            <option value="">Todas las Categorías</option>
+                        </select>
+                        <select id="sortFilter" class="filter-select">
+                            <option value="date-desc">Más Recientes</option>
+                            <option value="date-asc">Más Antiguos</option>
+                            <option value="amount-desc">Mayor Monto</option>
+                            <option value="amount-asc">Menor Monto</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state hidden" id="emptyTransactions">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h3>No hay Transacciones</h3>
+                    <p>Subí un resumen de tarjeta para ver tus gastos acá</p>
+                    <button class="btn-primary" id="goToUpload">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Subir Resumen
+                    </button>
+                </div>
+
+                <!-- Loading State -->
+                <div class="loading-state hidden" id="loadingTransactions">
+                    <div class="spinner"></div>
+                    <p>Cargando transacciones...</p>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section class="tab-content" id="analytics-section">
+                <div class="section-header">
+                    <h1>Analytics y Recomendaciones</h1>
+                    <p>Consejos personalizados basados en tus gastos</p>
+                </div>
+
+                <!-- Currency Toggle for Analytics -->
+                <div class="filter-controls">
+                    <div class="currency-toggle" id="analyticsCurrencyToggle">
+                        <button class="toggle-btn active" data-currency="">📊 Todos</button>
+                        <button class="toggle-btn" data-currency="ars">💵 ARS</button>
+                        <button class="toggle-btn" data-currency="usd">💲 USD</button>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="recommendations-grid" id="recommendationsList">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state hidden" id="emptyRecommendations">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>
+                    <h3>Sin Datos para Analizar</h3>
+                    <p>Subí algunos gastos para recibir recomendaciones</p>
+                </div>
+            </section>
+
+            <!-- Categories Section -->
+            <section class="tab-content" id="categories-section">
+                <div class="section-header">
+                    <div class="section-title-row">
+                        <div>
+                            <h1>Mis Categorías</h1>
+                            <p>Personalizá las categorías de tus gastos</p>
+                        </div>
+                        <button class="btn-primary" id="addCategoryBtn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Nueva Categoría
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Categories Grid -->
+                <div class="categories-grid" id="categoriesList">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast hidden" id="toast">
+        <div class="toast-icon"></div>
+        <span class="toast-message" id="toastMessage"></span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

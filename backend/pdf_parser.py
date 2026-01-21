@@ -100,15 +100,27 @@ def is_subtotal_row(text: str) -> bool:
 
 
 def extract_saldo_actual(text: str) -> Tuple[float, float]:
-    """Extract SALDO ACTUAL values (pesos and dollars) from text"""
+    """
+    Extract SALDO ACTUAL values (pesos and dollars) from text.
+    Supports standard format: "SALDO ACTUAL $ 1.000 U$S 10"
+    Supports tabular format: "TOTAL A PAGAR    1.000,00    0,00"
+    """
     saldo_pesos = 0.0
     saldo_dolares = 0.0
     
-    # Pattern: SALDO ACTUAL $ 3051644,80 U$S 488,62
-    match = re.search(r'SALDO ACTUAL\s*\$?\s*([\d.,]+)\s*U\$S\s*([\d.,]+)', text, re.IGNORECASE)
+    # Standard format with currency symbols
+    match = re.search(r'(?:SALDO ACTUAL|TOTAL A PAGAR)\s*\$?\s*([\d.,]+)\s*U\$S\s*([\d.,]+)', text, re.IGNORECASE)
     if match:
         saldo_pesos = parse_amount(match.group(1))
         saldo_dolares = parse_amount(match.group(2))
+        return saldo_pesos, saldo_dolares
+    
+    # Tabular format (two numbers at end of line being Pesos, USD)
+    # Looking for Label + space + number + space + number
+    match_tabular = re.search(r'(?:SALDO ACTUAL|TOTAL A PAGAR).*?([\d.,]+)\s+([\d.,]+)\s*$', text, re.IGNORECASE | re.MULTILINE)
+    if match_tabular:
+        saldo_pesos = parse_amount(match_tabular.group(1))
+        saldo_dolares = parse_amount(match_tabular.group(2))
     
     return saldo_pesos, saldo_dolares
 
@@ -116,13 +128,13 @@ def extract_saldo_actual(text: str) -> Tuple[float, float]:
 def extract_saldo_pendiente(text: str) -> Tuple[float, float]:
     """
     Extract SALDO PENDIENTE values (previous month's balance)
-    Example line: "SALDO PENDIENTE     160594,67      0,00"
+    Supports: "SALDO PENDIENTE", "SALDO ANTERIOR"
     """
     saldo_pesos = 0.0
     saldo_dolares = 0.0
     
-    # Pattern: SALDO PENDIENTE followed by two numbers (pesos and dollars)
-    match = re.search(r'SALDO PENDIENTE\s+([\d.,]+)\s+([\d.,]+)', text, re.IGNORECASE)
+    # Pattern: Label followed by two numbers
+    match = re.search(r'(?:SALDO PENDIENTE|SALDO ANTERIOR|SALDO DEUDA).*?([\d.,]+)\s+([\d.,]+)', text, re.IGNORECASE)
     if match:
         saldo_pesos = parse_amount(match.group(1))
         saldo_dolares = parse_amount(match.group(2))
@@ -192,57 +204,77 @@ def parse_transaction_line(line: str) -> Optional[Transaction]:
     
     rest = date_match.group(2).strip()
     
-    # Check if it's a USD transaction (contains USA,USD or USA,ARS in description)
-    is_dollar = 'USA,' in rest.upper()
+    # extract the amounts
+    # Heuristic: 
+    # If 2 numbers at end -> Col 1 = Pesos, Col 2 = Dollars
+    # If 1 number at end -> Check regex for 'USA' or currency symbols, else default to Pesos
     
-    # Extract the amount at the END of the line (last number)
-    # Pattern: find the last number in the line
-    numbers = re.findall(r'-?[\d]+[.,][\d]+', rest)
-    
+    numbers = re.findall(r'-?[\d]+(?:[.,]\d+)?', rest)
     if not numbers:
         return None
     
-    # Last number is the transaction amount
-    amount_str = numbers[-1]
-    amount = parse_amount(amount_str)
+    # Identify amount-like numbers (must contain comma or dot usually, or be the last tokens)
+    # The last tokens are usually the amounts.
     
-    # Find coupon number (5 digits before the amount)
-    coupon_match = re.search(r'\s(\d{5})\s+' + re.escape(amount_str.replace('.', r'\.').replace(',', r'\,')), rest)
-    coupon = coupon_match.group(1) if coupon_match else ""
+    amount_pesos = 0.0
+    amount_dollars = 0.0
+    is_dollar_trans = False
     
-    # Get merchant name (everything before the coupon or amount)
-    if coupon:
-        merchant = rest.split(coupon)[0].strip()
+    # Case 2 numbers at end: 100,00  0,00
+    if len(numbers) >= 2:
+        # Check if the last two patterns look like amounts and are close to end of string
+        # For simplicity, let's assume the last 2 numbers found are the columns
+        val1 = parse_amount(numbers[-2])
+        val2 = parse_amount(numbers[-1])
+        
+        # In tabular format: Pesos | Dollars
+        amount_pesos = val1
+        amount_dollars = val2
+        
+        if amount_dollars != 0:
+            is_dollar_trans = True
+            
+        # Determine valid coupon/merchant split
+        # Everything before the first amount number
+        amt_str_1 = numbers[-2]
+        split_pos = rest.rfind(amt_str_1)
+        merchant_part = rest[:split_pos].strip()
+        
     else:
-        # Just take everything before the last number
-        last_num_pos = rest.rfind(amount_str)
-        merchant = rest[:last_num_pos].strip()
-    
-    # Clean up merchant name
+        # Case 1 number: 100,00
+        # Assume Pesos unless marked
+        val = parse_amount(numbers[-1])
+        
+        # Check for explicit USD indicators in text
+        if 'USA,' in rest.upper() or 'USD' in rest.upper() or 'U$S' in rest.upper():
+             amount_dollars = val
+             is_dollar_trans = True
+        else:
+             amount_pesos = val
+             
+        amt_str = numbers[-1]
+        split_pos = rest.rfind(amt_str)
+        merchant_part = rest[:split_pos].strip()
+        
+    # Extract Coupon from merchant_part if exists (5 digits at end)
+    coupon = ""
+    coupon_match = re.search(r'(\d{5})$', merchant_part)
+    if coupon_match:
+        coupon = coupon_match.group(1)
+        merchant = merchant_part[:-5].strip()
+    else:
+        merchant = merchant_part
+        
     merchant = re.sub(r'\s+', ' ', merchant).strip()
     
-    # Remove trailing numbers that might be coupon
-    merchant = re.sub(r'\s+\d{5}$', '', merchant)
-    
-    # Assign to correct column based on transaction type
-    if is_dollar:
-        return Transaction(
-            date=date,
-            merchant=merchant,
-            coupon_number=coupon,
-            amount_pesos=0.0,
-            amount_dollars=amount,
-            is_dollar=True
-        )
-    else:
-        return Transaction(
-            date=date,
-            merchant=merchant,
-            coupon_number=coupon,
-            amount_pesos=amount,
-            amount_dollars=0.0,
-            is_dollar=False
-        )
+    return Transaction(
+        date=date,
+        merchant=merchant,
+        coupon_number=coupon,
+        amount_pesos=amount_pesos,
+        amount_dollars=amount_dollars,
+        is_dollar=is_dollar_trans
+    )
 
 
 def parse_mastercard_pdf(file_path: str) -> StatementData:

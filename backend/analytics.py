@@ -40,6 +40,12 @@ def get_analytics(
             models.Statement.year == year
         )
         period_label = f"{month}/{year}"
+    elif month:
+        # Filter by month only (all years)
+        query = query.join(models.Statement).filter(
+            models.Statement.month == month
+        )
+        period_label = f"Mes {month}"
     elif year:
         # Join with Statement and filter by statement year
         query = query.join(models.Statement).filter(
@@ -47,32 +53,9 @@ def get_analytics(
         )
         period_label = str(year)
     else:
-
-        # Default: Try to find the latest statement
-        latest_stmt = db.query(models.Statement).filter(
-            models.Statement.user_id == user_id
-        ).order_by(
-            models.Statement.year.desc(),
-            models.Statement.month.desc()
-        ).first()
-
-        if latest_stmt:
-            # Use latest statement period
-            query = query.join(models.Statement).filter(
-                models.Statement.id == latest_stmt.id
-            )
-            period_label = f"Resumen {latest_stmt.month}/{latest_stmt.year}"
-        else:
-            # Fallback to date-based if no statements exist
-            now = datetime.utcnow()
-            if period == "month":
-                start_date = now - timedelta(days=30)
-            elif period == "quarter":
-                start_date = now - timedelta(days=90)
-            else:  # year
-                start_date = now - timedelta(days=365)
-            query = query.filter(models.Transaction.date >= start_date)
-            period_label = period
+        # No filter: return ALL transactions from all statements
+        # This is the "Todos los meses / Todos los años" case
+        period_label = "Todos los períodos"
     
     transactions = query.all()
     
@@ -311,44 +294,18 @@ def get_spending_trend(
             results = query.group_by(func.date(models.Transaction.date)).order_by(func.date(models.Transaction.date)).all()
             
         else:
-            # Default: Try to use Latest Statement if available
-            latest_stmt = db.query(models.Statement).filter(
-                models.Statement.user_id == user_id
-            ).order_by(
-                models.Statement.year.desc(),
-                models.Statement.month.desc()
-            ).first()
-
-            if latest_stmt:
-                 # Filter by Latest Statement
-                query = db.query(
-                    func.date(models.Transaction.date).label("date"),
-                    func.sum(models.Transaction.amount).label("total")
-                ).join(models.Statement).filter(
-                    models.Statement.id == latest_stmt.id,
-                    models.Statement.user_id == user_id
-                )
+            # No filter: return ALL transactions grouped by date
+            results = db.query(
+                func.date(models.Transaction.date).label("date"),
+                func.sum(models.Transaction.amount).label("total")
+            ).filter(
+                models.Transaction.user_id == user_id
+            )
+            
+            if is_dollar is not None:
+                results = results.filter(models.Transaction.is_dollar == is_dollar)
                 
-                if is_dollar is not None:
-                    query = query.filter(models.Transaction.is_dollar == is_dollar)
-                    
-                results = query.group_by(func.date(models.Transaction.date)).order_by(func.date(models.Transaction.date)).all()
-            else:
-                # Fallback to last 30 days
-                start_date = now - timedelta(days=30)
-                end_date = now
-                
-                base_filter.append(models.Transaction.date >= start_date)
-                base_filter.append(models.Transaction.date < end_date)
-                
-                results = db.query(
-                    func.date(models.Transaction.date).label("date"),
-                    func.sum(models.Transaction.amount).label("total")
-                ).filter(*base_filter).group_by(
-                    func.date(models.Transaction.date)
-                ).order_by(
-                    func.date(models.Transaction.date)
-                ).all()
+            results = results.group_by(func.date(models.Transaction.date)).order_by(func.date(models.Transaction.date)).all()
 
         return [{"date": str(r.date), "total": float(r.total)} for r in results]
     
